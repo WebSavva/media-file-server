@@ -1,0 +1,63 @@
+worker_processes  5;
+worker_rlimit_nofile 8192;
+
+events {
+  worker_connections  4096;
+}
+
+http {
+  default_type application/octet-stream;
+  tcp_nopush   on;
+  server_names_hash_bucket_size 128;
+  client_max_body_size 1000000M;
+
+  server {
+    server_name ${HOST};
+
+    listen 443 ssl;
+
+
+    ssl_certificate /etc/ssl/${HOST}.crt;
+    ssl_certificate_key /etc/ssl/${HOST}.key;
+    
+    location / {
+        add_header 'Access-Control-Allow-Origin' '*';
+        add_header 'Access-Control-Allow-Credentials' 'true';
+        add_header 'Access-Control-Allow-Headers' 'Authorization,Accept,Origin,DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Content-Range,Range';
+        add_header 'Access-Control-Allow-Methods' 'GET,POST,OPTIONS,PUT,DELETE,PATCH';
+
+        if ($request_method = 'OPTIONS') {
+          add_header 'Access-Control-Allow-Origin' '*';
+          add_header 'Access-Control-Allow-Credentials' 'true';
+          add_header 'Access-Control-Allow-Headers' 'Authorization,Accept,Origin,DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Content-Range,Range';
+          add_header 'Access-Control-Allow-Methods' 'GET,POST,OPTIONS,PUT,DELETE,PATCH';
+          add_header 'Access-Control-Max-Age' 1728000;
+          add_header 'Content-Type' 'text/plain charset=UTF-8';
+          add_header 'Content-Length' 0;
+          return 204;
+        }
+
+        proxy_redirect off;
+        proxy_set_header host $host;
+        proxy_set_header X-real-ip $remote_addr;
+        proxy_set_header X-forward-for $proxy_add_x_forwarded_for;
+        proxy_pass http://${HOST}:3000/;
+      }
+
+    location /static/ {
+      proxy_pass http://web:5000/;
+
+      sub_filter 'action="/'  'action="/static/';
+      sub_filter 'href="/'  'href="/static/';
+      sub_filter 'src="/'  'src="/static/';
+      sub_filter '</body>' '<script>
+        window.addEventListener("DOMContentLoaded", () => {
+          document.body.querySelectorAll(\'a[href^="/"]\').forEach(link => {
+            link.setAttribute(\'href\', \'/static\' + link.getAttribute(\'href\'));
+          });
+        });
+      </script>\r\n</body>';
+      sub_filter_once off;
+    }
+  }
+}
