@@ -1,5 +1,5 @@
 export $( grep -E '.*=(.*)' .env )
-envsubst < ./nginx.conf.template > ./nginx.conf
+envsubst '$HOST' < ./nginx.conf.template > ./nginx.conf
 
 mkdir -p files
 mkdir -p db
