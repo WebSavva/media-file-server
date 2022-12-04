@@ -1,3 +1,4 @@
 ssl
 db
 .env
+nginx.conf
